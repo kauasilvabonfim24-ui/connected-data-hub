@@ -59,7 +59,7 @@ export default function Sidebar() {
           return (
             <Link
               key={to}
-              to={to}
+              to={to as string}
               className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition ${
                 active ? "bg-brand-50 text-brand" : "text-ink-muted hover:bg-surface hover:text-ink"
               }`}
