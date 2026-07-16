@@ -15,7 +15,14 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { initials } from "@/lib/utils";
 
-const nav = [
+type NavItem = {
+  to: string;
+  label: string;
+  icon: typeof LayoutDashboard;
+  exact?: boolean;
+};
+
+const nav: NavItem[] = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { to: "/agenda", label: "Agenda", icon: Calendar },
   { to: "/clientes", label: "Clientes", icon: Users },
@@ -26,7 +33,7 @@ const nav = [
   { to: "/marketing", label: "Marketing", icon: Megaphone },
   { to: "/notificacoes", label: "Notificações", icon: Bell },
   { to: "/configuracoes", label: "Configurações", icon: Settings },
-] as const;
+];
 
 export default function Sidebar() {
   const { usuario, empresa, signOut } = useAuth();
