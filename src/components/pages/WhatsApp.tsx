@@ -3,7 +3,7 @@ import { MessageCircle } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
 import { formatDate, initials } from '@/lib/utils'
-import Badge from '@/components/ui/Badge'
+import Badge from '@/components/ui/StatusBadge'
 import EmptyState from '@/components/ui/EmptyState'
 import type { WhatsappConversa, WhatsappMensagem } from '@/types/database'
 

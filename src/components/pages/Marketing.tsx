@@ -3,7 +3,7 @@ import { Plus, Sparkles } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
 import { formatDate } from '@/lib/utils'
-import Badge from '@/components/ui/Badge'
+import Badge from '@/components/ui/StatusBadge'
 import EmptyState from '@/components/ui/EmptyState'
 import type { CampanhaMarketing } from '@/types/database'
 

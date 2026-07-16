@@ -4,7 +4,7 @@ import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import StatCard from '@/components/ui/StatCard'
-import Badge from '@/components/ui/Badge'
+import Badge from '@/components/ui/StatusBadge'
 import EmptyState from '@/components/ui/EmptyState'
 import type { FinanceiroTransacao } from '@/types/database'
 
