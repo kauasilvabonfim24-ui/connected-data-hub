@@ -12,6 +12,16 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as CadastroRouteImport } from './routes/cadastro'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
+import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated.index'
+import { Route as AuthenticatedWhatsappRouteImport } from './routes/_authenticated.whatsapp'
+import { Route as AuthenticatedServicosRouteImport } from './routes/_authenticated.servicos'
+import { Route as AuthenticatedNotificacoesRouteImport } from './routes/_authenticated.notificacoes'
+import { Route as AuthenticatedMarketingRouteImport } from './routes/_authenticated.marketing'
+import { Route as AuthenticatedIaEmpresarialRouteImport } from './routes/_authenticated.ia-empresarial'
+import { Route as AuthenticatedFinanceiroRouteImport } from './routes/_authenticated.financeiro'
+import { Route as AuthenticatedConfiguracoesRouteImport } from './routes/_authenticated.configuracoes'
+import { Route as AuthenticatedClientesRouteImport } from './routes/_authenticated.clientes'
+import { Route as AuthenticatedAgendaRouteImport } from './routes/_authenticated.agenda'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -27,33 +37,152 @@ const AuthenticatedRoute = AuthenticatedRouteImport.update({
   id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedWhatsappRoute = AuthenticatedWhatsappRouteImport.update({
+  id: '/whatsapp',
+  path: '/whatsapp',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedServicosRoute = AuthenticatedServicosRouteImport.update({
+  id: '/servicos',
+  path: '/servicos',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedNotificacoesRoute =
+  AuthenticatedNotificacoesRouteImport.update({
+    id: '/notificacoes',
+    path: '/notificacoes',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedMarketingRoute = AuthenticatedMarketingRouteImport.update({
+  id: '/marketing',
+  path: '/marketing',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedIaEmpresarialRoute =
+  AuthenticatedIaEmpresarialRouteImport.update({
+    id: '/ia-empresarial',
+    path: '/ia-empresarial',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedFinanceiroRoute = AuthenticatedFinanceiroRouteImport.update({
+  id: '/financeiro',
+  path: '/financeiro',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedConfiguracoesRoute =
+  AuthenticatedConfiguracoesRouteImport.update({
+    id: '/configuracoes',
+    path: '/configuracoes',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedClientesRoute = AuthenticatedClientesRouteImport.update({
+  id: '/clientes',
+  path: '/clientes',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedAgendaRoute = AuthenticatedAgendaRouteImport.update({
+  id: '/agenda',
+  path: '/agenda',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof AuthenticatedRoute
+  '/': typeof AuthenticatedIndexRoute
   '/cadastro': typeof CadastroRoute
   '/login': typeof LoginRoute
+  '/agenda': typeof AuthenticatedAgendaRoute
+  '/clientes': typeof AuthenticatedClientesRoute
+  '/configuracoes': typeof AuthenticatedConfiguracoesRoute
+  '/financeiro': typeof AuthenticatedFinanceiroRoute
+  '/ia-empresarial': typeof AuthenticatedIaEmpresarialRoute
+  '/marketing': typeof AuthenticatedMarketingRoute
+  '/notificacoes': typeof AuthenticatedNotificacoesRoute
+  '/servicos': typeof AuthenticatedServicosRoute
+  '/whatsapp': typeof AuthenticatedWhatsappRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof AuthenticatedRoute
   '/cadastro': typeof CadastroRoute
   '/login': typeof LoginRoute
+  '/agenda': typeof AuthenticatedAgendaRoute
+  '/clientes': typeof AuthenticatedClientesRoute
+  '/configuracoes': typeof AuthenticatedConfiguracoesRoute
+  '/financeiro': typeof AuthenticatedFinanceiroRoute
+  '/ia-empresarial': typeof AuthenticatedIaEmpresarialRoute
+  '/marketing': typeof AuthenticatedMarketingRoute
+  '/notificacoes': typeof AuthenticatedNotificacoesRoute
+  '/servicos': typeof AuthenticatedServicosRoute
+  '/whatsapp': typeof AuthenticatedWhatsappRoute
+  '/': typeof AuthenticatedIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/_authenticated': typeof AuthenticatedRoute
+  '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/cadastro': typeof CadastroRoute
   '/login': typeof LoginRoute
+  '/_authenticated/agenda': typeof AuthenticatedAgendaRoute
+  '/_authenticated/clientes': typeof AuthenticatedClientesRoute
+  '/_authenticated/configuracoes': typeof AuthenticatedConfiguracoesRoute
+  '/_authenticated/financeiro': typeof AuthenticatedFinanceiroRoute
+  '/_authenticated/ia-empresarial': typeof AuthenticatedIaEmpresarialRoute
+  '/_authenticated/marketing': typeof AuthenticatedMarketingRoute
+  '/_authenticated/notificacoes': typeof AuthenticatedNotificacoesRoute
+  '/_authenticated/servicos': typeof AuthenticatedServicosRoute
+  '/_authenticated/whatsapp': typeof AuthenticatedWhatsappRoute
+  '/_authenticated/': typeof AuthenticatedIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/cadastro' | '/login'
+  fullPaths:
+    | '/'
+    | '/cadastro'
+    | '/login'
+    | '/agenda'
+    | '/clientes'
+    | '/configuracoes'
+    | '/financeiro'
+    | '/ia-empresarial'
+    | '/marketing'
+    | '/notificacoes'
+    | '/servicos'
+    | '/whatsapp'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/cadastro' | '/login'
-  id: '__root__' | '/_authenticated' | '/cadastro' | '/login'
+  to:
+    | '/cadastro'
+    | '/login'
+    | '/agenda'
+    | '/clientes'
+    | '/configuracoes'
+    | '/financeiro'
+    | '/ia-empresarial'
+    | '/marketing'
+    | '/notificacoes'
+    | '/servicos'
+    | '/whatsapp'
+    | '/'
+  id:
+    | '__root__'
+    | '/_authenticated'
+    | '/cadastro'
+    | '/login'
+    | '/_authenticated/agenda'
+    | '/_authenticated/clientes'
+    | '/_authenticated/configuracoes'
+    | '/_authenticated/financeiro'
+    | '/_authenticated/ia-empresarial'
+    | '/_authenticated/marketing'
+    | '/_authenticated/notificacoes'
+    | '/_authenticated/servicos'
+    | '/_authenticated/whatsapp'
+    | '/_authenticated/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  AuthenticatedRoute: typeof AuthenticatedRoute
+  AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
   CadastroRoute: typeof CadastroRoute
   LoginRoute: typeof LoginRoute
 }
@@ -81,11 +210,111 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/': {
+      id: '/_authenticated/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedIndexRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/whatsapp': {
+      id: '/_authenticated/whatsapp'
+      path: '/whatsapp'
+      fullPath: '/whatsapp'
+      preLoaderRoute: typeof AuthenticatedWhatsappRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/servicos': {
+      id: '/_authenticated/servicos'
+      path: '/servicos'
+      fullPath: '/servicos'
+      preLoaderRoute: typeof AuthenticatedServicosRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/notificacoes': {
+      id: '/_authenticated/notificacoes'
+      path: '/notificacoes'
+      fullPath: '/notificacoes'
+      preLoaderRoute: typeof AuthenticatedNotificacoesRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/marketing': {
+      id: '/_authenticated/marketing'
+      path: '/marketing'
+      fullPath: '/marketing'
+      preLoaderRoute: typeof AuthenticatedMarketingRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/ia-empresarial': {
+      id: '/_authenticated/ia-empresarial'
+      path: '/ia-empresarial'
+      fullPath: '/ia-empresarial'
+      preLoaderRoute: typeof AuthenticatedIaEmpresarialRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/financeiro': {
+      id: '/_authenticated/financeiro'
+      path: '/financeiro'
+      fullPath: '/financeiro'
+      preLoaderRoute: typeof AuthenticatedFinanceiroRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/configuracoes': {
+      id: '/_authenticated/configuracoes'
+      path: '/configuracoes'
+      fullPath: '/configuracoes'
+      preLoaderRoute: typeof AuthenticatedConfiguracoesRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/clientes': {
+      id: '/_authenticated/clientes'
+      path: '/clientes'
+      fullPath: '/clientes'
+      preLoaderRoute: typeof AuthenticatedClientesRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/agenda': {
+      id: '/_authenticated/agenda'
+      path: '/agenda'
+      fullPath: '/agenda'
+      preLoaderRoute: typeof AuthenticatedAgendaRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
   }
 }
 
+interface AuthenticatedRouteChildren {
+  AuthenticatedAgendaRoute: typeof AuthenticatedAgendaRoute
+  AuthenticatedClientesRoute: typeof AuthenticatedClientesRoute
+  AuthenticatedConfiguracoesRoute: typeof AuthenticatedConfiguracoesRoute
+  AuthenticatedFinanceiroRoute: typeof AuthenticatedFinanceiroRoute
+  AuthenticatedIaEmpresarialRoute: typeof AuthenticatedIaEmpresarialRoute
+  AuthenticatedMarketingRoute: typeof AuthenticatedMarketingRoute
+  AuthenticatedNotificacoesRoute: typeof AuthenticatedNotificacoesRoute
+  AuthenticatedServicosRoute: typeof AuthenticatedServicosRoute
+  AuthenticatedWhatsappRoute: typeof AuthenticatedWhatsappRoute
+  AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
+}
+
+const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
+  AuthenticatedAgendaRoute: AuthenticatedAgendaRoute,
+  AuthenticatedClientesRoute: AuthenticatedClientesRoute,
+  AuthenticatedConfiguracoesRoute: AuthenticatedConfiguracoesRoute,
+  AuthenticatedFinanceiroRoute: AuthenticatedFinanceiroRoute,
+  AuthenticatedIaEmpresarialRoute: AuthenticatedIaEmpresarialRoute,
+  AuthenticatedMarketingRoute: AuthenticatedMarketingRoute,
+  AuthenticatedNotificacoesRoute: AuthenticatedNotificacoesRoute,
+  AuthenticatedServicosRoute: AuthenticatedServicosRoute,
+  AuthenticatedWhatsappRoute: AuthenticatedWhatsappRoute,
+  AuthenticatedIndexRoute: AuthenticatedIndexRoute,
+}
+
+const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
+  AuthenticatedRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
-  AuthenticatedRoute: AuthenticatedRoute,
+  AuthenticatedRoute: AuthenticatedRouteWithChildren,
   CadastroRoute: CadastroRoute,
   LoginRoute: LoginRoute,
 }
