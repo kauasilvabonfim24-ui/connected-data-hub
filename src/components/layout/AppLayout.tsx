@@ -1,6 +1,6 @@
-import { Outlet } from "@tanstack/react-router";
-import Sidebar from "./Sidebar";
-import Topbar from "./Topbar";
+import { Outlet } from 'react-router-dom'
+import Sidebar from './Sidebar'
+import Topbar from './Topbar'
 
 export default function AppLayout() {
   return (
@@ -13,5 +13,5 @@ export default function AppLayout() {
         </main>
       </div>
     </div>
-  );
+  )
 }
