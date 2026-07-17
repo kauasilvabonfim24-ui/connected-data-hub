@@ -175,7 +175,14 @@ Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS })
 
   try {
+    // [DIAGNOSTICO-TEMP] Log dos headers recebidos
+    console.log('[ia-central][DIAG] headers recebidos:', JSON.stringify(Object.fromEntries(req.headers.entries())))
+
     const body = await req.json()
+
+    // [DIAGNOSTICO-TEMP] Log do body recebido antes da validação
+    console.log('[ia-central][DIAG] body recebido:', JSON.stringify(body))
+
     const {
       empresa_id,
       canal = 'whatsapp',
