@@ -26,13 +26,17 @@ export interface Cliente {
   empresa_id: string
   nome: string
   telefone: string
+  whatsapp_numero: string | null
   email: string | null
   endereco: string | null
   aniversario: string | null
+  origem: string | null
+  observacoes: string | null
   total_gasto: number
   total_servicos: number
   ultima_compra_em: string | null
   criado_em: string
+  atualizado_em: string
 }
 
 export interface Servico {
