@@ -5,6 +5,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { formatDate, initials } from '@/lib/utils'
 import Badge from '@/components/ui/Badge'
 import EmptyState from '@/components/ui/EmptyState'
+import { toast } from '@/lib/toast'
 import type { WhatsappConversa, WhatsappMensagem } from '@/types/database'
 
 type FiltroStatus = 'todas' | 'aberta' | 'aguardando_humano' | 'fechada'
@@ -102,11 +103,14 @@ export default function WhatsApp() {
         })
         .eq('id', ativa.id)
 
+      toast.success('Mensagem enviada como atendente. IA pausada temporariamente.')
+
       // 3. Atualiza localmente
       await loadMensagens(ativa.id)
       await loadConversas(empresa.id)
     } catch (err) {
       console.error(err)
+      toast.error('Erro ao enviar mensagem.')
     } finally {
       setEnviando(false)
     }
@@ -116,12 +120,23 @@ export default function WhatsApp() {
   async function alterarStatus(novoStatus: WhatsappConversa['status']) {
     if (!ativa || !empresa?.id) return
     
-    await supabase
+    const { error } = await supabase
       .from('whatsapp_conversas')
       .update({ status: novoStatus })
       .eq('id', ativa.id)
 
-    await loadConversas(empresa.id)
+    if (error) {
+      toast.error('Erro ao alterar controle da conversa.')
+    } else {
+      if (novoStatus === 'aberta') {
+        toast.success('Servix IA reativada para automatizar o atendimento deste cliente!')
+      } else if (novoStatus === 'fechada') {
+        toast.success('Conversa marcada como resolvida e concluída!')
+      } else {
+        toast.success('Conversa colocada sob controle de operador humano.')
+      }
+      await loadConversas(empresa.id)
+    }
   }
 
   // Simula o recebimento de uma mensagem do cliente no WhatsApp
@@ -136,8 +151,6 @@ export default function WhatsApp() {
 
     try {
       // Chamada da IA Central usando o cliente do Supabase invoke()
-      // Se a Edge Function ia-central estiver configurada, ela processará tudo.
-      // Se der erro ou não estiver deployed, faremos a simulação em cascata localmente no banco para não quebrar a experiência do usuário.
       const { data, error } = await supabase.functions.invoke('ia-central', {
         body: {
           empresa_id: empresa.id,
@@ -161,7 +174,6 @@ export default function WhatsApp() {
 
         // 2. Se a conversa for 'aberta', gera uma resposta local simulada do robô
         if (ativa.status === 'aberta' || ativa.status === 'fechada') {
-          // Importa logicamente as mesmas respostas simplificadas baseadas em regras
           const txt = texto.toLowerCase()
           let respostaRobo = `Olá! Sou o assistente automático da empresa. No momento recebemos sua mensagem e já estamos analisando.`
           
@@ -188,11 +200,14 @@ export default function WhatsApp() {
           .eq('id', ativa.id)
       }
 
+      toast.success('Mensagem do cliente simulada com sucesso!')
+
       // Recarrega todos os dados
       await loadMensagens(ativa.id)
       await loadConversas(empresa.id)
     } catch (err) {
       console.error(err)
+      toast.error('Erro na simulação de mensagem.')
     } finally {
       setSimulando(false)
     }

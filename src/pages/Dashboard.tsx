@@ -6,6 +6,7 @@ import { formatCurrency, formatDate, greeting } from '@/lib/utils'
 import StatCard from '@/components/ui/StatCard'
 import Badge from '@/components/ui/Badge'
 import EmptyState from '@/components/ui/EmptyState'
+import { toast } from '@/lib/toast'
 import type { Agendamento, IaSugestao } from '@/types/database'
 
 export default function Dashboard() {
@@ -68,8 +69,17 @@ export default function Dashboard() {
   }
 
   async function responderSugestao(id: string, status: 'aceita' | 'recusada') {
-    await supabase.from('ia_sugestoes').update({ status, respondida_em: new Date().toISOString() }).eq('id', id)
-    setSugestoes((prev) => prev.filter((s) => s.id !== id))
+    const { error } = await supabase.from('ia_sugestoes').update({ status, respondida_em: new Date().toISOString() }).eq('id', id)
+    if (error) {
+      toast.error('Não foi possível registrar sua resposta.')
+    } else {
+      if (status === 'aceita') {
+        toast.success('Sugestão aceita! O Servix IA está aplicando a otimização no seu negócio.')
+      } else {
+        toast.success('Sugestão arquivada.')
+      }
+      setSugestoes((prev) => prev.filter((s) => s.id !== id))
+    }
   }
 
   return (
