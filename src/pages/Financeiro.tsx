@@ -6,12 +6,14 @@ import { formatCurrency, formatDate } from '@/lib/utils'
 import StatCard from '@/components/ui/StatCard'
 import Badge from '@/components/ui/Badge'
 import EmptyState from '@/components/ui/EmptyState'
+import FinanceiroFormModal from '@/components/financeiro/FinanceiroFormModal'
 import type { FinanceiroTransacao } from '@/types/database'
 
 export default function Financeiro() {
   const { empresa } = useAuth()
   const [transacoes, setTransacoes] = useState<FinanceiroTransacao[]>([])
   const [loading, setLoading] = useState(true)
+  const [modalOpen, setModalOpen] = useState(false)
 
   useEffect(() => {
     if (!empresa?.id) return
@@ -43,7 +45,7 @@ export default function Financeiro() {
           <h1 className="font-display text-xl font-semibold text-ink">Financeiro</h1>
           <p className="text-sm text-ink-muted">Receitas, despesas e recebimentos do mês.</p>
         </div>
-        <button className="btn-primary"><Plus size={16} /> Novo lançamento</button>
+        <button className="btn-primary" onClick={() => setModalOpen(true)}><Plus size={16} /> Novo lançamento</button>
       </div>
 
       <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -84,6 +86,12 @@ export default function Financeiro() {
           </table>
         )}
       </div>
+
+      <FinanceiroFormModal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        onSaved={() => empresa?.id && load(empresa.id)}
+      />
     </div>
   )
 }
