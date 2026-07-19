@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
-import { MessageCircle, Send, Sparkles, Check, Power, AlertCircle, RefreshCw } from 'lucide-react'
+import { MessageCircle, Send, Sparkles, Check, Power, RefreshCw, QrCode, Wifi, WifiOff, Calendar, ShieldCheck, X } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
 import { formatDate, initials } from '@/lib/utils'
@@ -9,9 +9,10 @@ import { toast } from '@/lib/toast'
 import type { WhatsappConversa, WhatsappMensagem } from '@/types/database'
 
 type FiltroStatus = 'todas' | 'aberta' | 'aguardando_humano' | 'fechada'
+type ConexaoStatus = 'Conectado' | 'Desconectado' | 'Conectando' | 'Erro na conexão'
 
 export default function WhatsApp() {
-  const { empresa } = useAuth()
+  const { empresa, refreshEmpresa } = useAuth()
   const [conversas, setConversas] = useState<WhatsappConversa[]>([])
   const [ativa, setAtiva] = useState<WhatsappConversa | null>(null)
   const [mensagens, setMensagens] = useState<WhatsappMensagem[]>([])
@@ -25,7 +26,27 @@ export default function WhatsApp() {
   const [msgSimulada, setMsgSimulada] = useState('')
   const [simulando, setSimulando] = useState(false)
 
+  // WhatsApp Connection States
+  const [showConnectionPanel, setShowConnectionPanel] = useState(false)
+  const [statusConexao, setStatusConexao] = useState<ConexaoStatus>('Desconectado')
+  const [numeroConectado, setNumeroConectado] = useState('')
+  const [dataConexao, setDataConexao] = useState('')
+  const [ultimaSincronizacao, setUltimaSincronizacao] = useState('')
+  const [qrCodeData, setQrCodeData] = useState('')
+  const [gerandoQr, setGerandoQr] = useState(false)
+
   const chatEndRef = useRef<HTMLDivElement>(null)
+
+  // Load connection states from company regras_negocio
+  useEffect(() => {
+    if (empresa) {
+      const conexao = (empresa.regras_negocio as any)?.whatsapp_conexao
+      setStatusConexao(conexao?.status || 'Desconectado')
+      setNumeroConectado(conexao?.numero || empresa.whatsapp_numero || '')
+      setDataConexao(conexao?.data_conexao || '')
+      setUltimaSincronizacao(conexao?.ultima_sincronizacao || '')
+    }
+  }, [empresa])
 
   useEffect(() => {
     if (!empresa?.id) return
@@ -53,7 +74,6 @@ export default function WhatsApp() {
           filter: `empresa_id=eq.${empresa.id}`
         },
         () => {
-          // Instantly refresh list of active conversations
           void loadConversas(empresa.id)
         }
       )
@@ -66,7 +86,6 @@ export default function WhatsApp() {
         },
         async (payload) => {
           const novaMsg = payload.new as WhatsappMensagem
-          // If the message belongs to the current open chat, reload the messaging feed
           if (ativa && novaMsg.conversa_id === ativa.id) {
             await loadMensagens(ativa.id)
           }
@@ -98,7 +117,6 @@ export default function WhatsApp() {
       if (!ativa || !lista.some(c => c.id === ativa.id)) {
         setAtiva(lista[0])
       } else {
-        // Keep selected conversation up-to-date with DB changes
         const atual = lista.find(c => c.id === ativa.id)
         if (atual) setAtiva(atual)
       }
@@ -117,6 +135,81 @@ export default function WhatsApp() {
     setMensagens((data as WhatsappMensagem[]) ?? [])
   }
 
+  // Handles starting connection flow & QR generation
+  async function iniciarConexao() {
+    setGerandoQr(true)
+    setStatusConexao('Conectando')
+    
+    // Generate simulated setup payloads for real-world QR validation
+    const qrPayload = `servix-ia-session-${empresa?.id || Math.random().toString()}-${Date.now()}`
+    setQrCodeData(`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrPayload)}`)
+    setGerandoQr(false)
+
+    // Automatically register connecting status in database
+    await atualizarConexaoBanco('Conectando', '', '', '')
+  }
+
+  // Simulates scanning the connection QR code successfully
+  async function simularEscaneamento() {
+    if (!empresa?.id) return
+    const mockNumber = `+55 (11) 9${Math.floor(1000 + Math.random() * 9000)}-${Math.floor(1000 + Math.random() * 9000)}`
+    const nowStr = new Date().toISOString()
+
+    setStatusConexao('Conectado')
+    setNumeroConectado(mockNumber)
+    setDataConexao(nowStr)
+    setUltimaSincronizacao(nowStr)
+    setQrCodeData('')
+
+    await atualizarConexaoBanco('Conectado', mockNumber, nowStr, nowStr)
+    toast.success('WhatsApp conectado e sincronizado com sucesso!')
+  }
+
+  // Handles disconnection flow
+  async function desconectarWhatsapp() {
+    if (!empresa?.id) return
+    if (!confirm('Tem certeza que deseja desconectar este WhatsApp? O assistente automático de respostas será desligado imediatamente.')) return
+
+    setStatusConexao('Desconectado')
+    setNumeroConectado('')
+    setDataConexao('')
+    setUltimaSincronizacao('')
+    setQrCodeData('')
+
+    await atualizarConexaoBanco('Desconectado', '', '', '')
+    toast.success('WhatsApp desconectado. Respostas automáticas desativadas.')
+  }
+
+  // Helper to persist connection data to public.empresas regras_negocio JSONB
+  async function atualizarConexaoBanco(status: ConexaoStatus, numero: string, dataCon: string, ultimaSinc: string) {
+    if (!empresa?.id) return
+
+    const regrasAtuais = empresa.regras_negocio || {}
+    const novasRegras = {
+      ...regrasAtuais,
+      whatsapp_conexao: {
+        status,
+        numero,
+        data_conexao: dataCon,
+        ultima_sincronizacao: ultimaSinc
+      }
+    }
+
+    const { error } = await supabase
+      .from('empresas')
+      .update({
+        regras_negocio: novasRegras,
+        whatsapp_numero: numero || null
+      })
+      .eq('id', empresa.id)
+
+    if (error) {
+      toast.error(`Erro ao salvar status de conexão: ${error.message}`)
+    } else {
+      await refreshEmpresa()
+    }
+  }
+
   // Envia mensagem como atendente (humano)
   async function enviarResposta(e: React.FormEvent) {
     e.preventDefault()
@@ -127,7 +220,6 @@ export default function WhatsApp() {
     setNovaMensagem('')
 
     try {
-      // 1. Insere mensagem do atendente
       await supabase.from('whatsapp_mensagens').insert({
         conversa_id: ativa.id,
         remetente: 'atendente',
@@ -135,7 +227,6 @@ export default function WhatsApp() {
         conteudo: texto
       })
 
-      // 2. Coloca conversa como 'aguardando_humano'
       await supabase
         .from('whatsapp_conversas')
         .update({
@@ -146,7 +237,6 @@ export default function WhatsApp() {
 
       toast.success('Mensagem enviada como atendente. IA pausada temporariamente.')
 
-      // 3. Atualiza localmente
       await loadMensagens(ativa.id)
       await loadConversas(empresa.id)
     } catch (err) {
@@ -191,7 +281,6 @@ export default function WhatsApp() {
     setSimuladorAberto(false)
 
     try {
-      // Chamada da IA Central usando o cliente do Supabase invoke()
       const { data, error } = await supabase.functions.invoke('ia-central', {
         body: {
           empresa_id: empresa.id,
@@ -204,8 +293,6 @@ export default function WhatsApp() {
       if (error) {
         console.warn('Falha ao chamar a Edge function, aplicando fallback de simulação local no banco:', error)
         
-        // Simulação local no banco (Fallback do fluxo)
-        // 1. Insere a mensagem simulada do cliente
         await supabase.from('whatsapp_mensagens').insert({
           conversa_id: ativa.id,
           remetente: 'cliente',
@@ -213,7 +300,6 @@ export default function WhatsApp() {
           conteudo: texto
         })
 
-        // 2. Se a conversa for 'aberta', gera uma resposta local simulada do robô
         if (ativa.status === 'aberta' || ativa.status === 'fechada') {
           const txt = texto.toLowerCase()
           let respostaRobo = `Olá! Sou o assistente automático da empresa. No momento recebemos sua mensagem e já estamos analisando.`
@@ -243,7 +329,6 @@ export default function WhatsApp() {
 
       toast.success('Mensagem do cliente simulada com sucesso!')
 
-      // Recarrega todos os dados
       await loadMensagens(ativa.id)
       await loadConversas(empresa.id)
     } catch (err) {
@@ -254,31 +339,144 @@ export default function WhatsApp() {
     }
   }
 
-  // Filtra as conversas localmente de acordo com a aba selecionada
   const filtradas = conversas.filter((c) => {
     if (filtro === 'todas') return true
     return c.status === filtro
   })
 
   return (
-    <div className="flex h-[calc(100vh-9rem)] flex-col">
-      <div className="mb-4 flex items-center justify-between">
+    <div className="flex h-[calc(100vh-9rem)] flex-col space-y-4">
+      {/* Top Header Section */}
+      <div className="flex items-center justify-between">
         <div>
           <h1 className="font-display text-xl font-semibold text-ink">WhatsApp</h1>
-          <p className="text-sm text-ink-muted">Conversas atendidas pela IA — assuma quando precisar.</p>
+          <p className="text-sm text-ink-muted">Conecte seu dispositivo e gerencie o assistente automático.</p>
         </div>
         
-        {ativa && (
+        <div className="flex items-center gap-2">
           <button
-            onClick={() => setSimuladorAberto(true)}
-            className="btn-secondary !py-2 !text-xs flex items-center gap-2 border-ia text-ia-600 hover:bg-ia-100/30"
+            onClick={() => setShowConnectionPanel(!showConnectionPanel)}
+            className={`btn-secondary !py-2 !text-xs flex items-center gap-2 border-brand-100 ${
+              statusConexao === 'Conectado' ? 'bg-ia-100/30 border-ia text-ia-600' : ''
+            }`}
           >
-            <Sparkles size={14} className="text-ia" />
-            Simular Mensagem de Cliente
+            {statusConexao === 'Conectado' ? <Wifi size={14} /> : <WifiOff size={14} />}
+            Status: {statusConexao}
           </button>
-        )}
+          {ativa && (
+            <button
+              onClick={() => setSimuladorAberto(true)}
+              className="btn-secondary !py-2 !text-xs flex items-center gap-2 border-ia text-ia-600 hover:bg-ia-100/30"
+            >
+              <Sparkles size={14} className="text-ia" />
+              Simular Mensagem
+            </button>
+          )}
+        </div>
       </div>
 
+      {/* WHATSAPP CONNECTION PANEL */}
+      {showConnectionPanel && (
+        <div className="card p-5 bg-white border-brand-50 shadow-md">
+          <div className="flex items-center justify-between mb-4 pb-2 border-b border-surface-border">
+            <h3 className="font-display text-base font-semibold text-ink flex items-center gap-2">
+              <QrCode size={18} className="text-brand" />
+              Conexão do Dispositivo WhatsApp
+            </h3>
+            <button onClick={() => setShowConnectionPanel(false)} className="text-ink-soft hover:text-ink">
+              <X size={16} />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+            {/* Status Information */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-3">
+                <span className={`flex h-4 w-4 items-center justify-center rounded-full ${
+                  statusConexao === 'Conectado' ? 'bg-ia-100 text-ia-600' :
+                  statusConexao === 'Conectando' ? 'bg-amber-100 text-amber-600' : 'bg-rose-100 text-rose-600'
+                }`}>
+                  <span className={`h-2 w-2 rounded-full ${
+                    statusConexao === 'Conectado' ? 'bg-ia' :
+                    statusConexao === 'Conectando' ? 'bg-amber' : 'bg-rose-600'
+                  }`} />
+                </span>
+                <div>
+                  <p className="text-xs text-ink-soft leading-none">Estado de Conexão</p>
+                  <p className="text-sm font-semibold text-ink mt-0.5">{statusConexao}</p>
+                </div>
+              </div>
+
+              {statusConexao === 'Conectado' && (
+                <>
+                  <div className="grid grid-cols-2 gap-4 bg-surface/50 p-3 rounded-xl border border-surface-border">
+                    <div>
+                      <p className="text-[10px] text-ink-soft">Número Conectado</p>
+                      <p className="text-xs font-semibold text-ink mt-0.5">{numeroConectado}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-ink-soft">Sincronizado em</p>
+                      <p className="text-xs font-semibold text-ink mt-0.5">{formatDate(ultimaSincronizacao || new Date(), true)}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-ia-600 bg-ia-100/20 p-2.5 rounded-xl border border-ia-100/50">
+                    <ShieldCheck size={14} className="shrink-0" />
+                    Respostas automáticas do robô estão ativas e monitorando as mensagens.
+                  </div>
+                </>
+              )}
+
+              {statusConexao !== 'Conectado' && (
+                <p className="text-xs text-ink-muted leading-relaxed">
+                  Conecte seu celular para que o Servix IA possa ler e responder às mensagens dos seus clientes no WhatsApp. Caso esteja desconectado, o robô suspenderá todos os envios automáticos imediatamente.
+                </p>
+              )}
+
+              <div className="flex gap-2">
+                {statusConexao === 'Desconectado' && (
+                  <button onClick={iniciarConexao} disabled={gerandoQr} className="btn-primary !py-2 !text-xs">
+                    Gerar QR Code de Conexão
+                  </button>
+                )}
+                {statusConexao === 'Conectando' && (
+                  <button onClick={simularEscaneamento} className="btn-primary !py-2 !text-xs !bg-ia hover:!bg-ia-600">
+                    Simular Escaneamento (Conectar)
+                  </button>
+                )}
+                {statusConexao !== 'Desconectado' && (
+                  <button onClick={desconectarWhatsapp} className="btn-secondary !py-2 !text-xs text-rose-600 border-rose-200 hover:bg-rose-50">
+                    Desconectar Aparelho
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* QR Code display area */}
+            <div className="flex flex-col items-center justify-center p-4 bg-surface/35 rounded-2xl border border-surface-border border-dashed min-h-[220px]">
+              {statusConexao === 'Conectando' && qrCodeData ? (
+                <div className="text-center space-y-3">
+                  <img src={qrCodeData} alt="WhatsApp Connection QR Code" className="w-40 h-40 object-contain rounded-lg border bg-white p-1" />
+                  <p className="text-[10px] text-ink-soft font-mono">Escaneie o código acima usando o WhatsApp Web</p>
+                </div>
+              ) : statusConexao === 'Conectado' ? (
+                <div className="text-center space-y-2 text-ia-600">
+                  <Wifi size={32} className="mx-auto text-ia animate-pulse" />
+                  <p className="text-xs font-semibold">Seu WhatsApp está emparelhado!</p>
+                  <p className="text-[10px] text-ink-soft">Atendimento automatizado 24h em execução.</p>
+                </div>
+              ) : (
+                <div className="text-center space-y-2 text-ink-soft">
+                  <WifiOff size={32} className="mx-auto" />
+                  <p className="text-xs">Aparelho Desconectado</p>
+                  <p className="text-[10px]">Gere um novo código QR para conectar</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CHATS GRID SECTION */}
       {loading ? (
         <p className="text-sm text-ink-muted">Carregando...</p>
       ) : conversas.length === 0 ? (
@@ -288,7 +486,7 @@ export default function WhatsApp() {
           description="Assim que o número do WhatsApp for conectado, as conversas atendidas pela IA aparecerão aqui."
         />
       ) : (
-        <div className="card grid grid-cols-1 overflow-hidden md:grid-cols-[300px_1fr] flex-1">
+        <div className="card grid grid-cols-1 overflow-hidden md:grid-cols-[300px_1fr] flex-1 min-h-0">
           {/* Barra Lateral de Conversas */}
           <div className="flex flex-col overflow-hidden border-r border-surface-border bg-white">
             {/* Abas de Filtros */}

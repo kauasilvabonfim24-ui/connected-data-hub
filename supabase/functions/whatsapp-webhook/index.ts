@@ -107,7 +107,25 @@ serve(async (req) => {
 
     console.log(`[whatsapp-webhook] Processing message for company ID: ${empresaId} from ${telefone}`)
 
-    // 3. Forward to IA Central for processing, intent recognition, database persistence, and decision making
+    // 3. Check WhatsApp connection status before processing response
+    const { data: empresa } = await supabase
+      .from('empresas')
+      .select('regras_negocio')
+      .eq('id', empresaId)
+      .single()
+
+    const regras = empresa?.regras_negocio as any
+    const conexaoStatus = regras?.whatsapp_conexao?.status || 'Desconectado'
+
+    if (conexaoStatus !== 'Conectado') {
+      console.log(`[whatsapp-webhook] WhatsApp is ${conexaoStatus}. Automated replies are strictly disabled.`)
+      return new Response(JSON.stringify({ success: true, processed: false, reason: "WhatsApp is disconnected" }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      })
+    }
+
+    // 4. Forward to IA Central for processing, intent recognition, database persistence, and decision making
     const iaCentralUrl = `${supabaseUrl}/functions/v1/ia-central`
     const iaResponse = await fetch(iaCentralUrl, {
       method: 'POST',
@@ -132,16 +150,8 @@ serve(async (req) => {
     const iaResult = await iaResponse.json()
     console.log("[whatsapp-webhook] IA Central reply resolution:", JSON.stringify(iaResult))
 
-    // 4. Send the resolved automated response back to the client via WhatsApp Cloud API or custom integration
+    // 5. Send the resolved automated response back to the client via WhatsApp Cloud API or custom integration
     if (iaResult.resposta && iaResult.status === 'aberta') {
-      // Query company tokens/configurations
-      const { data: empresa } = await supabase
-        .from('empresas')
-        .select('regras_negocio')
-        .eq('id', empresaId)
-        .single()
-
-      const regras = empresa?.regras_negocio as any
       const accessToken = Deno.env.get('WHATSAPP_ACCESS_TOKEN') || regras?.whatsapp_token || ""
       const phoneId = Deno.env.get('WHATSAPP_PHONE_NUMBER_ID') || regras?.whatsapp_phone_id || ""
 
