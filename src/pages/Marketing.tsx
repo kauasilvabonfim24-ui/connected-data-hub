@@ -5,12 +5,14 @@ import { useAuth } from '@/hooks/useAuth'
 import { formatDate } from '@/lib/utils'
 import Badge from '@/components/ui/Badge'
 import EmptyState from '@/components/ui/EmptyState'
+import CampanhaFormModal from '@/components/marketing/CampanhaFormModal'
 import type { CampanhaMarketing } from '@/types/database'
 
 export default function Marketing() {
   const { empresa } = useAuth()
   const [campanhas, setCampanhas] = useState<CampanhaMarketing[]>([])
   const [loading, setLoading] = useState(true)
+  const [modalOpen, setModalOpen] = useState(false)
 
   useEffect(() => {
     if (!empresa?.id) return
@@ -35,7 +37,7 @@ export default function Marketing() {
           <h1 className="font-display text-xl font-semibold text-ink">Marketing</h1>
           <p className="text-sm text-ink-muted">Campanhas de promoção e recuperação de clientes.</p>
         </div>
-        <button className="btn-primary"><Plus size={16} /> Nova campanha</button>
+        <button className="btn-primary" onClick={() => setModalOpen(true)}><Plus size={16} /> Nova campanha</button>
       </div>
 
       {loading ? (
@@ -68,6 +70,12 @@ export default function Marketing() {
           ))}
         </div>
       )}
+
+      <CampanhaFormModal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        onSaved={() => empresa?.id && load(empresa.id)}
+      />
     </div>
   )
 }
