@@ -23,6 +23,9 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY || !EMPRESA_ID) {
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 const IA_CENTRAL_URL = `${SUPABASE_URL}/functions/v1/ia-central`
 
+// Set to keep track of message IDs sent by this bot to avoid false-positive 'mensagem_de_dono' triggers
+const idsEnviadosPeloBot = new Set()
+
 async function atualizarInstancia(dados) {
   console.log('💾 Atualizando whatsapp_instancias:', dados)
   const { error } = await supabase.from('whatsapp_instancias').upsert(
@@ -64,7 +67,7 @@ async function iniciarWhatsapp() {
       console.log('📱 QR code recebido do Baileys, convertendo...')
       const qrcodeBase64 = await QRCode.toDataURL(qr)
       await atualizarInstancia({ qrcode_base64: qrcodeBase64, status: 'conectando' })
-      console.log('📱 QR code gerado e salvo.')
+      console.log('📱 QR code gerado e saved.')
     }
     if (connection === 'open') {
       const numero = sock.user?.id?.split(':')[0] ?? null
@@ -84,6 +87,13 @@ async function iniciarWhatsapp() {
     try {
       const msg = messages[0]
       if (!msg?.message) return
+
+      // Verify if this message's ID is stored in our bot-sent messages Set
+      if (msg.key?.id && idsEnviadosPeloBot.has(msg.key.id)) {
+        idsEnviadosPeloBot.delete(msg.key.id)
+        return // Ignore this message as it was sent by our bot, preventing turning off the IA Central automated state
+      }
+
       if (msg.key.remoteJid?.endsWith('@g.us')) return
       if (msg.key.remoteJid === 'status@broadcast') return
 
@@ -102,7 +112,10 @@ async function iniciarWhatsapp() {
       })
 
       if (resposta && !souEuMandando) {
-        await sock.sendMessage(msg.key.remoteJid, { text: resposta })
+        const enviada = await sock.sendMessage(msg.key.remoteJid, { text: resposta })
+        if (enviada?.key?.id) {
+          idsEnviadosPeloBot.add(enviada.key.id)
+        }
       }
     } catch (err) {
       console.error('❌ Erro processando mensagem:', err)
