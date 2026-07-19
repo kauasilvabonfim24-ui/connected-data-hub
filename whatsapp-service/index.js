@@ -3,7 +3,7 @@ const express = require('express')
 const QRCode = require('qrcode')
 const pino = require('pino')
 const { createClient } = require('@supabase/supabase-js')
-const { default: makeWASocket, useMultiFileAuthState, DisconnectReason } = require('@whiskeysockets/baileys')
+const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion } = require('@whiskeysockets/baileys')
 
 console.log('🚀 Iniciando servix-whatsapp-service...')
 
@@ -48,7 +48,10 @@ async function iniciarWhatsapp() {
   const { state, saveCreds } = await useMultiFileAuthState('./sessao')
   console.log('🔐 Estado de autenticação carregado.')
 
-  const sock = makeWASocket({ auth: state, logger: pino({ level: 'silent' }) })
+  const { version } = await fetchLatestBaileysVersion()
+  console.log(`📦 Usando versão do Baileys: ${version.join('.')}`)
+
+  const sock = makeWASocket({ auth: state, version, logger: pino({ level: 'silent' }) })
   console.log('🔌 Socket do WhatsApp criado, aguardando eventos...')
 
   sock.ev.on('creds.update', saveCreds)
