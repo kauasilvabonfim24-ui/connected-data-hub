@@ -5,6 +5,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { formatCurrency, formatDate, initials } from '@/lib/utils'
 import EmptyState from '@/components/ui/EmptyState'
 import ClienteFormModal from '@/components/clientes/ClienteFormModal'
+import toast from 'react-hot-toast'
 import type { Cliente } from '@/types/database'
 
 export default function Clientes() {
@@ -33,8 +34,13 @@ export default function Clientes() {
 
   async function excluir(c: Cliente) {
     if (!confirm(`Deseja excluir o cliente "${c.nome}"?`)) return
-    await supabase.from('clientes').delete().eq('id', c.id)
-    if (empresa?.id) void load(empresa.id)
+    const { error } = await supabase.from('clientes').delete().eq('id', c.id)
+    if (error) {
+      toast.error('Erro ao excluir cliente. Verifique se ele possui agendamentos ativos.')
+    } else {
+      toast.success('Cliente excluído com sucesso!')
+      if (empresa?.id) void load(empresa.id)
+    }
   }
 
   function abrirNovo() {
@@ -78,7 +84,7 @@ export default function Clientes() {
       ) : (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {filtrados.map((c) => (
-            <div key={c.id} className="card p-4 flex flex-col justify-between">
+            <div key={c.id} className="card p-4 flex flex-col justify-between transition duration-200 hover:shadow-md">
               <div>
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-3 min-w-0">

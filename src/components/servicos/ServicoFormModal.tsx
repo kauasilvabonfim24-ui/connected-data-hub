@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
+import toast from 'react-hot-toast'
 import type { Servico } from '@/types/database'
 
 interface Props {
@@ -20,7 +21,6 @@ export default function ServicoFormModal({ open, servico, onClose, onSaved }: Pr
   const [duracao, setDuracao] = useState('60')
   const [ativo, setAtivo] = useState(true)
   const [salvando, setSalvando] = useState(false)
-  const [erro, setErro] = useState<string | null>(null)
 
   useEffect(() => {
     if (open) {
@@ -29,7 +29,6 @@ export default function ServicoFormModal({ open, servico, onClose, onSaved }: Pr
       setPreco(servico ? String(servico.preco) : '')
       setDuracao(servico ? String(servico.duracao_minutos) : '60')
       setAtivo(servico ? servico.ativo : true)
-      setErro(null)
     }
   }, [open, servico])
 
@@ -38,39 +37,44 @@ export default function ServicoFormModal({ open, servico, onClose, onSaved }: Pr
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     if (!empresa?.id) return
-    setErro(null)
 
     const precoNum = Number(preco.replace(',', '.'))
     const duracaoNum = Number(duracao)
 
     if (!nome.trim()) {
-      setErro('Informe o nome do serviço.')
+      toast.error('Informe o nome do serviço.')
       return
     }
     if (isNaN(precoNum) || precoNum < 0) {
-      setErro('Preço inválido.')
+      toast.error('Preço inválido.')
       return
     }
     if (isNaN(duracaoNum) || duracaoNum <= 0) {
-      setErro('Duração inválida.')
+      toast.error('Duração inválida.')
       return
     }
 
     setSalvando(true)
+    let error = null
+
     if (servico) {
-      const { error } = await supabase
+      const res = await supabase
         .from('servicos')
         .update({ nome, descricao: descricao || null, preco: precoNum, duracao_minutos: duracaoNum, ativo })
         .eq('id', servico.id)
-      if (error) setErro(error.message)
+      error = res.error
     } else {
-      const { error } = await supabase
+      const res = await supabase
         .from('servicos')
         .insert({ empresa_id: empresa.id, nome, descricao: descricao || null, preco: precoNum, duracao_minutos: duracaoNum, ativo })
-      if (error) setErro(error.message)
+      error = res.error
     }
+    
     setSalvando(false)
-    if (!erro) {
+    if (error) {
+      toast.error(`Erro ao salvar: ${error.message}`)
+    } else {
+      toast.success(servico ? 'Serviço atualizado com sucesso!' : 'Novo serviço cadastrado!')
       onSaved()
       onClose()
     }
@@ -83,14 +87,10 @@ export default function ServicoFormModal({ open, servico, onClose, onSaved }: Pr
           {servico ? 'Editar serviço' : 'Novo serviço'}
         </h2>
 
-        {erro && (
-          <div className="mb-4 rounded-xl bg-rose-50 px-3.5 py-2.5 text-sm text-rose-700">{erro}</div>
-        )}
-
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="label">Nome</label>
-            <input className="input" value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex: Instalação elétrica" />
+            <input className="input" value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex: Instalação elétrica" required />
           </div>
           <div>
             <label className="label">Descrição</label>
@@ -99,15 +99,15 @@ export default function ServicoFormModal({ open, servico, onClose, onSaved }: Pr
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="label">Preço (R$)</label>
-              <input className="input" value={preco} onChange={(e) => setPreco(e.target.value)} placeholder="0,00" inputMode="decimal" />
+              <input className="input" value={preco} onChange={(e) => setPreco(e.target.value)} placeholder="0,00" inputMode="decimal" required />
             </div>
             <div>
               <label className="label">Duração (min)</label>
-              <input className="input" value={duracao} onChange={(e) => setDuracao(e.target.value)} inputMode="numeric" />
+              <input className="input" value={duracao} onChange={(e) => setDuracao(e.target.value)} inputMode="numeric" required />
             </div>
           </div>
-          <label className="flex items-center gap-2 text-sm text-ink">
-            <input type="checkbox" checked={ativo} onChange={(e) => setAtivo(e.target.checked)} className="h-4 w-4 rounded border-surface-border" />
+          <label className="flex items-center gap-2 text-sm text-ink cursor-pointer">
+            <input type="checkbox" checked={ativo} onChange={(e) => setAtivo(e.target.checked)} className="h-4 w-4 rounded border-surface-border text-ia focus:ring-ia" />
             Serviço ativo
           </label>
 

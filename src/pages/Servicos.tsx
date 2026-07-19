@@ -5,6 +5,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { formatCurrency } from '@/lib/utils'
 import EmptyState from '@/components/ui/EmptyState'
 import ServicoFormModal from '@/components/servicos/ServicoFormModal'
+import toast from 'react-hot-toast'
 import type { Servico } from '@/types/database'
 
 export default function Servicos() {
@@ -29,13 +30,23 @@ export default function Servicos() {
 
   async function excluir(s: Servico) {
     if (!confirm(`Excluir o serviço "${s.nome}"?`)) return
-    await supabase.from('servicos').delete().eq('id', s.id)
-    if (empresa?.id) void load(empresa.id)
+    const { error } = await supabase.from('servicos').delete().eq('id', s.id)
+    if (error) {
+      toast.error('Não foi possível excluir o serviço.')
+    } else {
+      toast.success('Serviço excluído!')
+      if (empresa?.id) void load(empresa.id)
+    }
   }
 
   async function toggleAtivo(s: Servico) {
-    await supabase.from('servicos').update({ ativo: !s.ativo }).eq('id', s.id)
-    if (empresa?.id) void load(empresa.id)
+    const { error } = await supabase.from('servicos').update({ ativo: !s.ativo }).eq('id', s.id)
+    if (error) {
+      toast.error('Erro ao atualizar status.')
+    } else {
+      toast.success(s.ativo ? 'Serviço desativado' : 'Serviço ativado!')
+      if (empresa?.id) void load(empresa.id)
+    }
   }
 
   function abrirNovo() {
@@ -77,7 +88,7 @@ export default function Servicos() {
       ) : (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {filtrados.map((s) => (
-            <div key={s.id} className={`card p-4 ${!s.ativo ? 'opacity-60' : ''}`}>
+            <div key={s.id} className={`card p-4 transition duration-200 hover:shadow-md ${!s.ativo ? 'opacity-60' : ''}`}>
               <div className="flex items-start justify-between">
                 <p className="font-medium text-ink">{s.nome}</p>
                 <div className="flex items-center gap-1">

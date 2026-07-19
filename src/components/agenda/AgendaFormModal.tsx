@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
+import toast from 'react-hot-toast'
 import type { Cliente, Servico, Agendamento, AgendamentoStatus } from '@/types/database'
 
 interface Props {
@@ -26,7 +27,6 @@ export default function AgendaFormModal({ open, agendamento, onClose, onSaved }:
   
   const [carregandoDados, setCarregandoDados] = useState(false)
   const [salvando, setSalvando] = useState(false)
-  const [erro, setErro] = useState<string | null>(null)
 
   useEffect(() => {
     if (open && empresa?.id) {
@@ -41,7 +41,6 @@ export default function AgendaFormModal({ open, agendamento, onClose, onSaved }:
         setServicoId(agendamento.servico_id ?? '')
         setStatus(agendamento.status)
         
-        // Formatar ISO string para datetime-local input format (YYYY-MM-DDTHH:MM)
         if (agendamento.data_hora_inicio) {
           const dt = new Date(agendamento.data_hora_inicio)
           const tzOffset = dt.getTimezoneOffset() * 60000
@@ -61,7 +60,6 @@ export default function AgendaFormModal({ open, agendamento, onClose, onSaved }:
         setValor('')
         setObservacoes('')
       }
-      setErro(null)
     }
   }, [open, agendamento])
 
@@ -71,6 +69,7 @@ export default function AgendaFormModal({ open, agendamento, onClose, onSaved }:
       const servicoSel = servicos.find(s => s.id === servicoId)
       if (servicoSel) {
         setValor(String(servicoSel.preco))
+        toast.success(`Preço sugerido aplicado: R$ ${Number(servicoSel.preco).toFixed(2).replace('.', ',')}`, { id: 'price-suggest' })
       }
     }
   }, [servicoId, servicos, agendamento])
@@ -89,20 +88,19 @@ export default function AgendaFormModal({ open, agendamento, onClose, onSaved }:
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     if (!empresa?.id) return
-    setErro(null)
 
     if (!clienteId) {
-      setErro('Por favor, selecione um cliente.')
+      toast.error('Por favor, selecione um cliente.')
       return
     }
     if (!dataHoraInicio) {
-      setErro('Por favor, selecione a data e hora de início.')
+      toast.error('Por favor, selecione a data e hora de início.')
       return
     }
 
     const valorNum = valor ? Number(valor.replace(',', '.')) : null
     if (valor && (isNaN(Number(valorNum)) || Number(valorNum) < 0)) {
-      setErro('Insira um valor numérico válido.')
+      toast.error('Insira um valor numérico válido.')
       return
     }
 
@@ -134,8 +132,9 @@ export default function AgendaFormModal({ open, agendamento, onClose, onSaved }:
 
     setSalvando(false)
     if (error) {
-      setErro(error.message)
+      toast.error(`Erro ao salvar agendamento: ${error.message}`)
     } else {
+      toast.success(agendamento ? 'Agendamento atualizado com sucesso!' : 'Novo agendamento agendado!')
       onSaved()
       onClose()
     }
@@ -147,10 +146,6 @@ export default function AgendaFormModal({ open, agendamento, onClose, onSaved }:
         <h2 className="mb-4 font-display text-lg font-semibold text-ink">
           {agendamento ? 'Editar agendamento' : 'Novo agendamento'}
         </h2>
-
-        {erro && (
-          <div className="mb-4 rounded-xl bg-rose-50 px-3.5 py-2.5 text-sm text-rose-700">{erro}</div>
-        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>

@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
+import toast from 'react-hot-toast'
 import type { Cliente } from '@/types/database'
 
 interface Props {
@@ -25,7 +26,6 @@ export default function ClienteFormModal({ open, cliente, onClose, onSaved }: Pr
     observacoes: ''
   })
   const [loading, setLoading] = useState(false)
-  const [erro, setErro] = useState<string | null>(null)
   const [tipo, setTipo] = useState<'novo' | 'editar'>('novo')
 
   useEffect(() => {
@@ -55,7 +55,6 @@ export default function ClienteFormModal({ open, cliente, onClose, onSaved }: Pr
     e.preventDefault()
     if (!empresa?.id) return
     setLoading(true)
-    setErro(null)
 
     const payload = {
       ...dados,
@@ -67,12 +66,13 @@ export default function ClienteFormModal({ open, cliente, onClose, onSaved }: Pr
         .from('clientes')
         .insert(payload)
         .select()
-      if (error) setErro(error.message)
-      else {
-        if (data && data.length > 0) {
-          onSaved()
-          onClose()
-        }
+      
+      if (error) {
+        toast.error(`Erro ao criar cliente: ${error.message}`)
+      } else {
+        toast.success('Cliente cadastrado com sucesso!')
+        onSaved()
+        onClose()
       }
     } else {
       const { data, error } = await supabase
@@ -80,12 +80,13 @@ export default function ClienteFormModal({ open, cliente, onClose, onSaved }: Pr
         .update(payload)
         .eq('id', cliente?.id)
         .select()
-      if (error) setErro(error.message)
-      else {
-        if (data && data.length > 0) {
-          onSaved()
-          onClose()
-        }
+      
+      if (error) {
+        toast.error(`Erro ao atualizar cliente: ${error.message}`)
+      } else {
+        toast.success('Cliente atualizado com sucesso!')
+        onSaved()
+        onClose()
       }
     }
     setLoading(false)
@@ -93,14 +94,10 @@ export default function ClienteFormModal({ open, cliente, onClose, onSaved }: Pr
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
-      <div className="card w-full max-w-lg p-5" onClick={(e) => e.stopPropagation()}>
+      <div className="card w-full max-w-lg p-5 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <h2 className="mb-4 font-display text-lg font-semibold text-ink">
           {tipo === 'novo' ? 'Novo cliente' : 'Editar cliente'}
         </h2>
-
-        {erro && (
-          <div className="mb-4 rounded-xl bg-rose-50 px-3.5 py-2.5 text-sm text-rose-700">{erro}</div>
-        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -129,7 +126,7 @@ export default function ClienteFormModal({ open, cliente, onClose, onSaved }: Pr
           </div>
           <div>
             <label className="label">Origem</label>
-            <input className="input" value={dados.origem || ''} onChange={(e) => setDados({...dados, origem: e.target.value})} placeholder="Indicação" />
+            <input className="input" value={dados.origem || ''} onChange={(e) => setDados({...dados, origem: e.target.value})} placeholder="Indicação, Instagram, etc." />
           </div>
           <div>
             <label className="label">Observações</label>

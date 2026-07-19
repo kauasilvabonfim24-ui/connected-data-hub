@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
+import toast from 'react-hot-toast'
 
 interface Props {
   open: boolean
@@ -20,7 +21,6 @@ export default function FinanceiroFormModal({ open, onClose, onSaved }: Props) {
   const [status, setStatus] = useState<'pago' | 'pendente'>('pago')
   const [dataTransacao, setDataTransacao] = useState(new Date().toISOString().slice(0, 10))
   const [salvando, setSalvando] = useState(false)
-  const [erro, setErro] = useState<string | null>(null)
 
   useEffect(() => {
     if (open) {
@@ -31,7 +31,6 @@ export default function FinanceiroFormModal({ open, onClose, onSaved }: Props) {
       setFormaPagamento('PIX')
       setStatus('pago')
       setDataTransacao(new Date().toISOString().slice(0, 10))
-      setErro(null)
     }
   }, [open])
 
@@ -40,15 +39,14 @@ export default function FinanceiroFormModal({ open, onClose, onSaved }: Props) {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     if (!empresa?.id) return
-    setErro(null)
 
     const valorNum = Number(valor.replace(',', '.'))
     if (!descricao.trim()) {
-      setErro('Informe uma descrição.')
+      toast.error('Informe uma descrição.')
       return
     }
     if (isNaN(valorNum) || valorNum <= 0) {
-      setErro('Informe um valor válido maior que zero.')
+      toast.error('Informe um valor válido maior que zero.')
       return
     }
 
@@ -68,8 +66,9 @@ export default function FinanceiroFormModal({ open, onClose, onSaved }: Props) {
 
     setSalvando(false)
     if (error) {
-      setErro(error.message)
+      toast.error(`Erro ao salvar transação: ${error.message}`)
     } else {
+      toast.success('Movimentação financeira registrada!')
       onSaved()
       onClose()
     }
@@ -81,10 +80,6 @@ export default function FinanceiroFormModal({ open, onClose, onSaved }: Props) {
         <h2 className="mb-4 font-display text-lg font-semibold text-ink">
           Novo lançamento financeiro
         </h2>
-
-        {erro && (
-          <div className="mb-4 rounded-xl bg-rose-50 px-3.5 py-2.5 text-sm text-rose-700">{erro}</div>
-        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -122,6 +117,7 @@ export default function FinanceiroFormModal({ open, onClose, onSaved }: Props) {
               value={descricao}
               onChange={(e) => setDescricao(e.target.value)}
               placeholder="Ex: Pagamento de energia, Compra de fios"
+              required
             />
           </div>
 
@@ -134,6 +130,7 @@ export default function FinanceiroFormModal({ open, onClose, onSaved }: Props) {
                 onChange={(e) => setValor(e.target.value)}
                 placeholder="0,00"
                 inputMode="decimal"
+                required
               />
             </div>
             <div>
@@ -181,6 +178,7 @@ export default function FinanceiroFormModal({ open, onClose, onSaved }: Props) {
               type="date"
               value={dataTransacao}
               onChange={(e) => setDataTransacao(e.target.value)}
+              required
             />
           </div>
 

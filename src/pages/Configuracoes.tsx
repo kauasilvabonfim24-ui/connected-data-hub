@@ -1,6 +1,7 @@
 import { FormEvent, useState } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { supabase } from '@/lib/supabase'
+import toast from 'react-hot-toast'
 
 export default function Configuracoes() {
   const { empresa, usuario, refreshEmpresa } = useAuth()
@@ -9,18 +10,25 @@ export default function Configuracoes() {
   const [whatsapp, setWhatsapp] = useState(empresa?.whatsapp_numero ?? '')
   const [segmento, setSegmento] = useState(empresa?.segmento ?? '')
   const [salvando, setSalvando] = useState(false)
-  const [salvo, setSalvo] = useState(false)
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     if (!empresa?.id) return
     setSalvando(true)
-    setSalvo(false)
-    await supabase.from('empresas').update({ nome, telefone, whatsapp_numero: whatsapp, segmento }).eq('id', empresa.id)
+    
+    const { error } = await supabase
+      .from('empresas')
+      .update({ nome, telefone, whatsapp_numero: whatsapp, segmento })
+      .eq('id', empresa.id)
+    
     await refreshEmpresa()
     setSalvando(false)
-    setSalvo(true)
-    setTimeout(() => setSalvo(false), 2500)
+    
+    if (error) {
+      toast.error(`Erro ao salvar configurações: ${error.message}`)
+    } else {
+      toast.success('Configurações atualizadas!')
+    }
   }
 
   return (
@@ -33,7 +41,7 @@ export default function Configuracoes() {
       <form onSubmit={handleSubmit} className="card space-y-4 p-5">
         <div>
           <label className="label">Nome da empresa</label>
-          <input className="input" value={nome} onChange={(e) => setNome(e.target.value)} />
+          <input className="input" value={nome} onChange={(e) => setNome(e.target.value)} required />
         </div>
         <div>
           <label className="label">Segmento</label>
@@ -52,7 +60,6 @@ export default function Configuracoes() {
           <button type="submit" disabled={salvando} className="btn-primary">
             {salvando ? 'Salvando...' : 'Salvar alterações'}
           </button>
-          {salvo && <span className="text-sm text-ia-600">Salvo com sucesso.</span>}
         </div>
       </form>
 

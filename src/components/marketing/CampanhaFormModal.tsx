@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
+import toast from 'react-hot-toast'
 
 interface Props {
   open: boolean
@@ -16,14 +17,12 @@ export default function CampanhaFormModal({ open, onClose, onSaved }: Props) {
   const [tipo, setTipo] = useState('promocao')
   const [mensagem, setMensagem] = useState('')
   const [salvando, setSalvando] = useState(false)
-  const [erro, setErro] = useState<string | null>(null)
 
   useEffect(() => {
     if (open) {
       setNome('')
       setTipo('promocao')
       setMensagem('')
-      setErro(null)
     }
   }, [open])
 
@@ -32,14 +31,13 @@ export default function CampanhaFormModal({ open, onClose, onSaved }: Props) {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     if (!empresa?.id) return
-    setErro(null)
 
     if (!nome.trim()) {
-      setErro('Informe o nome da campanha.')
+      toast.error('Informe o nome da campanha.')
       return
     }
     if (!mensagem.trim()) {
-      setErro('Escreva a mensagem da campanha.')
+      toast.error('Escreva a mensagem da campanha.')
       return
     }
 
@@ -57,8 +55,9 @@ export default function CampanhaFormModal({ open, onClose, onSaved }: Props) {
 
     setSalvando(false)
     if (error) {
-      setErro(error.message)
+      toast.error(`Erro ao salvar campanha: ${error.message}`)
     } else {
+      toast.success('Rascunho de campanha de marketing criado!')
       onSaved()
       onClose()
     }
@@ -70,10 +69,6 @@ export default function CampanhaFormModal({ open, onClose, onSaved }: Props) {
         <h2 className="mb-4 font-display text-lg font-semibold text-ink">
           Nova campanha de marketing
         </h2>
-
-        {erro && (
-          <div className="mb-4 rounded-xl bg-rose-50 px-3.5 py-2.5 text-sm text-rose-700">{erro}</div>
-        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>

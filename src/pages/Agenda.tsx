@@ -6,6 +6,7 @@ import { formatCurrency, formatDate } from '@/lib/utils'
 import Badge from '@/components/ui/Badge'
 import EmptyState from '@/components/ui/EmptyState'
 import AgendaFormModal from '@/components/agenda/AgendaFormModal'
+import toast from 'react-hot-toast'
 import type { Agendamento } from '@/types/database'
 
 export default function Agenda() {
@@ -43,8 +44,13 @@ export default function Agenda() {
 
   async function excluir(ag: Agendamento) {
     if (!confirm('Deseja realmente excluir este agendamento?')) return
-    await supabase.from('agendamentos').delete().eq('id', ag.id)
-    if (empresa?.id) void load(empresa.id)
+    const { error } = await supabase.from('agendamentos').delete().eq('id', ag.id)
+    if (error) {
+      toast.error('Erro ao excluir agendamento.')
+    } else {
+      toast.success('Agendamento removido!')
+      if (empresa?.id) void load(empresa.id)
+    }
   }
 
   return (
