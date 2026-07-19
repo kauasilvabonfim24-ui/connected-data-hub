@@ -1,244 +1,89 @@
-const express = require('express');
-const { default: makeWASocket, useMultiFileAuthState, DisconnectReason } = require('@whiskeysockets/baileys');
-const { createClient } = require('@supabase/supabase-js');
-const QRCode = require('qrcode');
-const pino = require('pino');
-const path = require('path');
-const fs = require('fs');
+require('dotenv').config()
+const express = require('express')
+const QRCode = require('qrcode')
+const pino = require('pino')
+const { createClient } = require('@supabase/supabase-js')
+const { default: makeWASocket, useMultiFileAuthState, DisconnectReason } = require('@whiskeysockets/baileys')
 
-const app = express();
-app.use(express.json());
+const { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, EMPRESA_ID, PORT = 3000 } = process.env
 
-const PORT = process.env.PORT || 3000;
-
-// Supabase Setup
-const SUPABASE_URL = process.env.SUPABASE_URL || "https://tebccrvgokmkclnjufxr.supabase.co";
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-let supabase;
-if (SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY) {
-  supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY || !EMPRESA_ID) {
+  console.error('Faltam variáveis: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, EMPRESA_ID')
+  process.exit(1)
 }
 
-// Armazenamento das sessões ativas em memória
-const sessions = {};
+const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+const IA_CENTRAL_URL = `${SUPABASE_URL}/functions/v1/ia-central`
 
-// Helper para sincronizar e atualizar o status de conexão no banco de dados do Supabase
-async function updateStatusInDatabase(empresaId, status, phoneNumber = '') {
-  if (!supabase) return;
-  try {
-    const { data: empresa } = await supabase
-      .from('empresas')
-      .select('regras_negocio')
-      .eq('id', empresaId)
-      .single();
-
-    const rules = empresa?.regras_negocio || {};
-    const updatedRules = {
-      ...rules,
-      whatsapp_conexao: {
-        status,
-        numero: phoneNumber || rules.whatsapp_conexao?.numero || '',
-        data_conexao: status === 'Conectado' ? new Date().toISOString() : rules.whatsapp_conexao?.data_conexao || '',
-        ultima_sincronizacao: new Date().toISOString()
-      }
-    };
-
-    await supabase
-      .from('empresas')
-      .update({ 
-        regras_negocio: updatedRules,
-        whatsapp_numero: phoneNumber || undefined
-      })
-      .eq('id', empresaId);
-  } catch (err) {
-    console.error(`[whatsapp-service] Erro ao sincronizar status no banco para ${empresaId}:`, err);
-  }
+async function atualizarInstancia(dados) {
+  await supabase.from('whatsapp_instancias').upsert(
+    { empresa_id: EMPRESA_ID, instance_name: 'render-baileys', ...dados },
+    { onConflict: 'empresa_id' }
+  )
 }
 
-// Inicia ou recupera uma sessão de conexão do WhatsApp
-async function startSession(empresaId) {
-  if (sessions[empresaId]) {
-    return sessions[empresaId];
-  }
+async function chamarIACentral(payload) {
+  const res = await fetch(IA_CENTRAL_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`, apikey: SUPABASE_SERVICE_ROLE_KEY },
+    body: JSON.stringify(payload)
+  })
+  return res.json()
+}
 
-  const authFolder = path.join(__dirname, 'sessions', empresaId);
-  const { state, saveCreds } = await useMultiFileAuthState(authFolder);
-
-  const sock = makeWASocket({
-    auth: state,
-    printQRInTerminal: false,
-    logger: pino({ level: 'silent' })
-  });
-
-  const session = {
-    sock,
-    qr: null,
-    status: 'Desconectado',
-    phoneNumber: ''
-  };
-
-  sessions[empresaId] = session;
-
-  sock.ev.on('creds.update', saveCreds);
+async function iniciarWhatsapp() {
+  const { state, saveCreds } = await useMultiFileAuthState('./sessao')
+  const sock = makeWASocket({ auth: state, logger: pino({ level: 'silent' }) })
+  sock.ev.on('creds.update', saveCreds)
 
   sock.ev.on('connection.update', async (update) => {
-    const { connection, lastDisconnect, qr } = update;
-
+    const { connection, lastDisconnect, qr } = update
     if (qr) {
-      session.status = 'Conectando';
-      try {
-        session.qr = await QRCode.toDataURL(qr);
-      } catch (err) {
-        console.error('[whatsapp-service] Erro ao gerar imagem do QR Code:', err);
-      }
-      await updateStatusInDatabase(empresaId, 'Conectando');
+      const qrcodeBase64 = await QRCode.toDataURL(qr)
+      await atualizarInstancia({ qrcode_base64: qrcodeBase64, status: 'conectando' })
+      console.log('📱 QR code gerado.')
     }
-
+    if (connection === 'open') {
+      const numero = sock.user?.id?.split(':')[0] ?? null
+      await atualizarInstancia({ status: 'conectado', qrcode_base64: null, numero_conectado: numero })
+      console.log('✅ WhatsApp conectado.')
+    }
     if (connection === 'close') {
-      session.qr = null;
-      const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
-      
-      if (shouldReconnect) {
-        console.log(`[whatsapp-service] Reconectando sessão para a empresa ${empresaId}...`);
-        delete sessions[empresaId];
-        await startSession(empresaId);
-      } else {
-        console.log(`[whatsapp-service] Sessão desconectada permanentemente para ${empresaId}`);
-        session.status = 'Desconectado';
-        session.phoneNumber = '';
-        await updateStatusInDatabase(empresaId, 'Desconectado');
-        try {
-          fs.rmSync(authFolder, { recursive: true, force: true });
-        } catch (e) {}
-        delete sessions[empresaId];
-      }
-    } else if (connection === 'open') {
-      session.status = 'Conectado';
-      session.qr = null;
-      const jid = sock.user.id;
-      const cleanNumber = jid.split(':')[0] || jid.split('@')[0];
-      session.phoneNumber = `+${cleanNumber}`;
-      console.log(`[whatsapp-service] WhatsApp conectado para ${empresaId} no número: ${session.phoneNumber}`);
-      await updateStatusInDatabase(empresaId, 'Conectado', session.phoneNumber);
+      const motivo = lastDisconnect?.error?.output?.statusCode
+      const deveReconectar = motivo !== DisconnectReason.loggedOut
+      await atualizarInstancia({ status: 'desconectado' })
+      if (deveReconectar) iniciarWhatsapp()
     }
-  });
+  })
 
-  // Listener para capturar e responder mensagens reais recebidas pelo WhatsApp do celular
-  sock.ev.on('messages.upsert', async (m) => {
-    if (m.type !== 'notify') return;
+  sock.ev.on('messages.upsert', async ({ messages }) => {
+    const msg = messages[0]
+    if (!msg?.message) return
+    if (msg.key.remoteJid?.endsWith('@g.us')) return
+    if (msg.key.remoteJid === 'status@broadcast') return
 
-    for (const msg of m.messages) {
-      if (msg.key.fromMe) continue; // Ignora mensagens enviadas pelo próprio usuário
-      if (!msg.message) continue;
+    const souEuMandando = msg.key.fromMe === true
+    const telefoneCliente = msg.key.remoteJid.replace('@s.whatsapp.net', '')
+    const texto = msg.message.conversation || msg.message.extendedTextMessage?.text || ''
+    if (!texto) return
 
-      const jid = msg.key.remoteJid;
-      if (!jid.endsWith('@s.whatsapp.net')) continue; // Aceita apenas chats individuais
+    const { resposta } = await chamarIACentral({
+      empresa_id: EMPRESA_ID,
+      canal: 'whatsapp',
+      telefone: telefoneCliente,
+      nome_contato: msg.pushName ?? null,
+      mensagem: texto,
+      mensagem_de_dono: souEuMandando
+    })
 
-      const text = msg.message.conversation || 
-                   msg.message.extendedTextMessage?.text || 
-                   '';
-
-      const fromPhone = jid.split('@')[0];
-      const pushName = msg.pushName || null;
-
-      console.log(`[whatsapp-service] Mensagem recebida de ${fromPhone}: ${text}`);
-
-      if (text && supabase) {
-        try {
-          const webhookUrl = `${SUPABASE_URL}/functions/v1/ia-central`;
-          const response = await fetch(webhookUrl, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`
-            },
-            body: JSON.stringify({
-              empresa_id: empresaId,
-              canal: 'whatsapp',
-              telefone: fromPhone,
-              nome_contato: pushName,
-              mensagem: text
-            })
-          });
-
-          if (response.ok) {
-            const result = await response.json();
-            if (result.resposta && result.status === 'aberta') {
-              // Envia a resposta gerada pela IA de volta ao cliente real no WhatsApp
-              await sock.sendMessage(jid, { text: result.resposta });
-              console.log(`[whatsapp-service] Resposta automática enviada para ${fromPhone}`);
-            }
-          } else {
-            const errText = await response.text();
-            console.error('[whatsapp-service] Erro ao enviar para ia-central:', errText);
-          }
-        } catch (err) {
-          console.error('[whatsapp-service] Erro no envio de mensagens para a IA Central:', err);
-        }
-      }
+    if (resposta && !souEuMandando) {
+      await sock.sendMessage(msg.key.remoteJid, { text: resposta })
     }
-  });
-
-  return session;
+  })
 }
 
-// Endpoint para gerar ou obter o QR Code ativo da sessão
-app.get('/qr', async (req, res) => {
-  const { empresa_id } = req.query;
-  if (!empresa_id) {
-    return res.status(400).json({ error: 'empresa_id é obrigatório' });
-  }
+iniciarWhatsapp()
 
-  try {
-    const session = await startSession(empresa_id);
-    if (session.status === 'Conectado') {
-      return res.json({ status: 'Conectado', qr: null, number: session.phoneNumber });
-    }
-    return res.json({ status: session.status, qr: session.qr });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Endpoint para checar status da conexão
-app.get('/status', (req, res) => {
-  const { empresa_id } = req.query;
-  if (!empresa_id) {
-    return res.status(400).json({ error: 'empresa_id é obrigatório' });
-  }
-
-  const session = sessions[empresa_id];
-  if (!session) {
-    return res.json({ status: 'Desconectado', qr: null });
-  }
-
-  res.json({
-    status: session.status,
-    qr: session.qr,
-    number: session.phoneNumber
-  });
-});
-
-// Endpoint para desconectar permanentemente o WhatsApp do sistema
-app.post('/disconnect', async (req, res) => {
-  const { empresa_id } = req.body;
-  if (!empresa_id) {
-    return res.status(400).json({ error: 'empresa_id é obrigatório' });
-  }
-
-  const session = sessions[empresa_id];
-  if (session) {
-    try {
-      await session.sock.logout();
-    } catch (e) {}
-    delete sessions[empresa_id];
-  }
-
-  await updateStatusInDatabase(empresa_id, 'Desconectado');
-  res.json({ success: true, status: 'Desconectado' });
-});
-
-app.listen(PORT, () => {
-  console.log(`[whatsapp-service] Microsserviço ativo rodando na porta ${PORT}`);
-});
+const app = express()
+app.get('/health', (req, res) => res.status(200).send('ok'))
+app.listen(PORT, () => console.log(`Health check na porta ${PORT}`))
