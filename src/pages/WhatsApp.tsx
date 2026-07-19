@@ -38,6 +38,47 @@ export default function WhatsApp() {
     }
   }, [ativa?.id])
 
+  // Subscribe to real-time changes in conversation and message lists
+  useEffect(() => {
+    if (!empresa?.id) return
+
+    const channel = supabase
+      .channel('whatsapp-realtime-production')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'whatsapp_conversas',
+          filter: `empresa_id=eq.${empresa.id}`
+        },
+        () => {
+          // Instantly refresh list of active conversations
+          void loadConversas(empresa.id)
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'whatsapp_mensagens'
+        },
+        async (payload) => {
+          const novaMsg = payload.new as WhatsappMensagem
+          // If the message belongs to the current open chat, reload the messaging feed
+          if (ativa && novaMsg.conversa_id === ativa.id) {
+            await loadMensagens(ativa.id)
+          }
+        }
+      )
+      .subscribe()
+
+    return () => {
+      void supabase.removeChannel(channel)
+    }
+  }, [empresa?.id, ativa?.id])
+
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [mensagens])
@@ -52,12 +93,12 @@ export default function WhatsApp() {
     const lista = (data as WhatsappConversa[]) ?? []
     setConversas(lista)
     
-    // Se não tiver nenhuma conversa ativa ou a ativa antiga sumiu, seleciona a primeira
+    // Select first conversation if none selected
     if (lista.length > 0) {
       if (!ativa || !lista.some(c => c.id === ativa.id)) {
         setAtiva(lista[0])
       } else {
-        // Atualiza os dados da conversa ativa atual
+        // Keep selected conversation up-to-date with DB changes
         const atual = lista.find(c => c.id === ativa.id)
         if (atual) setAtiva(atual)
       }
