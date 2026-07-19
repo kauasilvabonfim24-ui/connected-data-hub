@@ -1,7 +1,7 @@
 import { FormEvent, useState } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { supabase } from '@/lib/supabase'
-import toast from 'react-hot-toast'
+import { toast } from '@/lib/toast'
 
 export default function Configuracoes() {
   const { empresa, usuario, refreshEmpresa } = useAuth()
@@ -27,7 +27,7 @@ export default function Configuracoes() {
     if (error) {
       toast.error(`Erro ao salvar configurações: ${error.message}`)
     } else {
-      toast.success('Configurações atualizadas!')
+      toast.success('Configurações updated!')
     }
   }
 

@@ -6,7 +6,7 @@ import { formatCurrency, formatDate } from '@/lib/utils'
 import Badge from '@/components/ui/Badge'
 import EmptyState from '@/components/ui/EmptyState'
 import AgendaFormModal from '@/components/agenda/AgendaFormModal'
-import toast from 'react-hot-toast'
+import { toast } from '@/lib/toast'
 import type { Agendamento } from '@/types/database'
 
 export default function Agenda() {

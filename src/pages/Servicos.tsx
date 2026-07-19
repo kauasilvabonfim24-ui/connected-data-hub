@@ -5,7 +5,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { formatCurrency } from '@/lib/utils'
 import EmptyState from '@/components/ui/EmptyState'
 import ServicoFormModal from '@/components/servicos/ServicoFormModal'
-import toast from 'react-hot-toast'
+import { toast } from '@/lib/toast'
 import type { Servico } from '@/types/database'
 
 export default function Servicos() {

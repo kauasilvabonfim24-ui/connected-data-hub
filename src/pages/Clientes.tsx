@@ -5,7 +5,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { formatCurrency, formatDate, initials } from '@/lib/utils'
 import EmptyState from '@/components/ui/EmptyState'
 import ClienteFormModal from '@/components/clientes/ClienteFormModal'
-import toast from 'react-hot-toast'
+import { toast } from '@/lib/toast'
 import type { Cliente } from '@/types/database'
 
 export default function Clientes() {

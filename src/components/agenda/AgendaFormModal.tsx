@@ -3,7 +3,7 @@
 import { FormEvent, useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
-import toast from 'react-hot-toast'
+import { toast } from '@/lib/toast'
 import type { Cliente, Servico, Agendamento, AgendamentoStatus } from '@/types/database'
 
 interface Props {
