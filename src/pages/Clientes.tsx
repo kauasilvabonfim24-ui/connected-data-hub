@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
-import { Plus, Search } from 'lucide-react'
+import { Plus, Search, Pencil, Trash2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
 import { formatCurrency, formatDate, initials } from '@/lib/utils'
 import EmptyState from '@/components/ui/EmptyState'
+import ClienteFormModal from '@/components/clientes/ClienteFormModal'
 import type { Cliente } from '@/types/database'
 
 export default function Clientes() {
@@ -11,6 +12,8 @@ export default function Clientes() {
   const [clientes, setClientes] = useState<Cliente[]>([])
   const [busca, setBusca] = useState('')
   const [loading, setLoading] = useState(true)
+  const [modalOpen, setModalOpen] = useState(false)
+  const [editando, setEditando] = useState<Cliente | null>(null)
 
   useEffect(() => {
     if (!empresa?.id) return
@@ -28,6 +31,22 @@ export default function Clientes() {
     setLoading(false)
   }
 
+  async function excluir(c: Cliente) {
+    if (!confirm(`Deseja excluir o cliente "${c.nome}"?`)) return
+    await supabase.from('clientes').delete().eq('id', c.id)
+    if (empresa?.id) void load(empresa.id)
+  }
+
+  function abrirNovo() {
+    setEditando(null)
+    setModalOpen(true)
+  }
+
+  function abrirEdicao(c: Cliente) {
+    setEditando(c)
+    setModalOpen(true)
+  }
+
   const filtrados = clientes.filter((c) =>
     c.nome.toLowerCase().includes(busca.toLowerCase()) || c.telefone.includes(busca)
   )
@@ -39,7 +58,7 @@ export default function Clientes() {
           <h1 className="font-display text-xl font-semibold text-ink">Clientes</h1>
           <p className="text-sm text-ink-muted">Seu CRM — histórico, gastos e frequência de cada cliente.</p>
         </div>
-        <button className="btn-primary"><Plus size={16} /> Novo cliente</button>
+        <button className="btn-primary" onClick={abrirNovo}><Plus size={16} /> Novo cliente</button>
       </div>
 
       <div className="mb-4 relative max-w-xs">
@@ -59,14 +78,26 @@ export default function Clientes() {
       ) : (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {filtrados.map((c) => (
-            <div key={c.id} className="card p-4">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-50 text-sm font-semibold text-brand">
-                  {initials(c.nome)}
-                </div>
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium text-ink">{c.nome}</p>
-                  <p className="text-xs text-ink-soft">{c.telefone}</p>
+            <div key={c.id} className="card p-4 flex flex-col justify-between">
+              <div>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-50 text-sm font-semibold text-brand">
+                      {initials(c.nome)}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-ink">{c.nome}</p>
+                      <p className="text-xs text-ink-soft">{c.telefone}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-0.5">
+                    <button onClick={() => abrirEdicao(c)} title="Editar" className="rounded-lg p-1.5 text-ink-soft transition hover:bg-surface hover:text-ink">
+                      <Pencil size={15} />
+                    </button>
+                    <button onClick={() => excluir(c)} title="Excluir" className="rounded-lg p-1.5 text-ink-soft transition hover:bg-rose-50 hover:text-rose-600">
+                      <Trash2 size={15} />
+                    </button>
+                  </div>
                 </div>
               </div>
               <div className="mt-3.5 grid grid-cols-2 gap-2 border-t border-surface-border pt-3.5 text-xs">
@@ -87,6 +118,13 @@ export default function Clientes() {
           ))}
         </div>
       )}
+
+      <ClienteFormModal
+        open={modalOpen}
+        cliente={editando}
+        onClose={() => setModalOpen(false)}
+        onSaved={() => empresa?.id && load(empresa.id)}
+      />
     </div>
   )
 }
