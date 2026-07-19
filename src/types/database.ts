@@ -3,6 +3,17 @@
 export type AgendamentoStatus =
   | 'agendado' | 'confirmado' | 'em_andamento' | 'concluido' | 'cancelado' | 'remarcado'
 
+export interface RegrasNegocio {
+  atende_sabado: boolean
+  atende_domingo: boolean
+  formas_pagamento: string[]
+  intervalo_almoco: string | null
+  realiza_entregas: boolean
+  observacoes_gerais: string[]
+  horario_funcionamento: string
+  sinal_antecipado_percentual: number | null
+}
+
 export interface Empresa {
   id: string
   nome: string
@@ -11,6 +22,7 @@ export interface Empresa {
   whatsapp_numero: string | null
   logo_url: string | null
   criado_em: string
+  regras_negocio?: RegrasNegocio
 }
 
 export interface Usuario {
