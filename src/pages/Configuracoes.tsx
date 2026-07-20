@@ -2,10 +2,18 @@ import { FormEvent, useState, useEffect } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { supabase } from '@/lib/supabase'
 import { toast } from '@/lib/toast'
-import { Building, Sliders, Shield, MessageSquare, Info } from 'lucide-react'
+import { Building, Sliders, Shield, MessageSquare, Info, Smartphone, CheckCircle2, XCircle, QrCode } from 'lucide-react'
 import type { RegrasNegocio } from '@/types/database'
 
-type ActiveTab = 'geral' | 'regras_ia'
+type ActiveTab = 'geral' | 'regras_ia' | 'whatsapp'
+
+interface WhatsappInstancia {
+  id: string
+  empresa_id: string
+  status: string | null
+  numero_conectado: string | null
+  qrcode_base64: string | null
+}
 
 export default function Configuracoes() {
   const { empresa, usuario, refreshEmpresa } = useAuth()
