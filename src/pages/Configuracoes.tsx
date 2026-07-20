@@ -40,6 +40,33 @@ export default function Configuracoes() {
 
   const [salvando, setSalvando] = useState(false)
 
+  // WhatsApp instance state
+  const [waInstancia, setWaInstancia] = useState<WhatsappInstancia | null>(null)
+  const [waLoading, setWaLoading] = useState(true)
+
+  useEffect(() => {
+    if (!empresa?.id) return
+    let ativo = true
+
+    async function fetchInstancia() {
+      const { data } = await supabase
+        .from('whatsapp_instancias')
+        .select('id, empresa_id, status, numero_conectado, qrcode_base64')
+        .eq('empresa_id', empresa!.id)
+        .maybeSingle()
+      if (!ativo) return
+      setWaInstancia((data as WhatsappInstancia | null) ?? null)
+      setWaLoading(false)
+    }
+
+    fetchInstancia()
+    const interval = setInterval(fetchInstancia, 5000)
+    return () => {
+      ativo = false
+      clearInterval(interval)
+    }
+  }, [empresa?.id])
+
   // Initialize values when company profile finishes loading
   useEffect(() => {
     if (empresa) {
