@@ -164,6 +164,18 @@ export default function Configuracoes() {
           <Sliders size={16} />
           Regras de Negócio & IA
         </button>
+        <button
+          onClick={() => setActiveTab('whatsapp')}
+          type="button"
+          className={`flex items-center gap-2 border-b-2 px-4 py-2 text-sm font-medium transition ${
+            activeTab === 'whatsapp'
+              ? 'border-emerald-500 text-emerald-600'
+              : 'border-transparent text-ink-muted hover:text-ink hover:border-surface-border'
+          }`}
+        >
+          <Smartphone size={16} />
+          WhatsApp
+        </button>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
